@@ -34,6 +34,7 @@ async function savePlayers(players: Player[]) {
 
 export async function GET() {
   const players = await loadPlayers();
+    console.log('API GET - Returning players:', players); // Debug log
   return NextResponse.json(players);
 }
 
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { id, name, score } = body;
+      console.log('API POST - Received player data:', { id, name, score }); // Debug log
 
     const players = await loadPlayers();
     const existingPlayerIndex = players.findIndex(p => p.id === id);
@@ -48,14 +50,18 @@ export async function POST(request: NextRequest) {
     if (existingPlayerIndex >= 0) {
       // Update existing player
       players[existingPlayerIndex] = { id, name, score };
+        console.log('API POST - Updated existing player'); // Debug log
     } else {
       // Add new player
       players.push({ id, name, score });
+        console.log('API POST - Added new player'); // Debug log
     }
 
     await savePlayers(players);
+      console.log('API POST - Saved players:', players); // Debug log
     return NextResponse.json({ success: true });
   } catch (error) {
+      console.error('API POST - Error:', error); // Debug log
     return NextResponse.json({ error: 'Failed to update player' }, { status: 500 });
   }
 }

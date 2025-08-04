@@ -36,6 +36,7 @@ export default function Game() {
       try {
         const response = await fetch('/api/players');
         const data = await response.json();
+        console.log('Fetched players:', data); // Debug log
         setPlayers(data);
       } catch (error) {
         console.error('Failed to fetch players:', error);
@@ -67,6 +68,7 @@ export default function Game() {
     }
 
     try {
+      console.log('Joining game with:', { id: userId, name: playerName, score: 0 }); // Debug log
       await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -217,17 +219,26 @@ export default function Game() {
 
   return (
     <div className="p-4 mx-auto w-full max-w-6xl md:p-6">
-      <div className="mb-6 text-center">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 md:text-5xl">
-          CJID and Media Ecosystem Scramble Dash
-        </h1>
-        <p className="mt-2 text-gray-400">
-          Unscramble the definition and type the correct acronym! Your User ID:
-          <span className="px-2 py-1 ml-2 font-mono bg-gray-700 rounded">
-            {isClient ? (userId || 'Generating...') : 'Loading...'}
-          </span>
-        </p>
-      </div>
+              <div className="mb-6 text-center">
+          <div className="flex justify-between items-center mb-4">
+            <a
+              href="/admin"
+              className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
+            >
+              Admin Dashboard →
+            </a>
+            <div className="flex-1"></div>
+          </div>
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 md:text-5xl">
+            CJID and Media Ecosystem Scramble Dash
+          </h1>
+          <p className="mt-2 text-gray-400">
+            Unscramble the definition and type the correct acronym! Your User ID:
+            <span className="px-2 py-1 ml-2 font-mono bg-gray-700 rounded">
+              {isClient ? (userId || 'Generating...') : 'Loading...'}
+            </span>
+          </p>
+        </div>
 
       {/* Player Name Input */}
       {showNameInput && (
