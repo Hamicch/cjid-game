@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGameSession, createGameSession, updateGameSession, type GameSession } from '@/lib/supabase';
+import { getGameSession, createGameSession, updateGameSession, supabase, type GameSession } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,12 +7,31 @@ export async function GET(request: NextRequest) {
     const deviceId = searchParams.get('deviceId');
     const userId = searchParams.get('userId');
 
-    if (!deviceId || !userId) {
-      return NextResponse.json({ error: 'Missing deviceId or userId' }, { status: 400 });
+      if (!deviceId) {
+          return NextResponse.json({ error: 'Device ID is required' }, { status: 400 });
     }
 
-    const session = await getGameSession(deviceId, userId);
-    return NextResponse.json(session);
+      if (userId) {
+      // Get specific device + user session
+        const session = await getGameSession(deviceId, userId);
+        return NextResponse.json(session);
+    } else {
+        // Get any session for this device (for device recognition)
+        const { data, error } = await supabase
+            .from('game_sessions')
+            .select('*')
+            .eq('device_id', deviceId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            console.error('Error fetching device session:', error);
+            return NextResponse.json({ error: 'Failed to fetch device session' }, { status: 500 });
+        }
+
+        return NextResponse.json(data);
+    }
   } catch (error) {
     console.error('Error fetching game session:', error);
     return NextResponse.json({ error: 'Failed to fetch game session' }, { status: 500 });

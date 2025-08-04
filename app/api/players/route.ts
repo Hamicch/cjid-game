@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPlayers, upsertPlayer, resetAllScores, type Player } from '@/lib/supabase';
+import { getPlayers, upsertPlayer, resetAllScores, clearAllUsers, type Player } from '@/lib/supabase';
 
 export async function GET() {
   try {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       const success = await upsertPlayer({ id, name, score });
 
       if (!success) {
-          return NextResponse.json({ error: 'Failed to update player' }, { status: 500 });
+          return NextResponse.json({ error: 'Username already exists or failed to update player' }, { status: 409 });
     }
 
     return NextResponse.json({ success: true });
@@ -44,9 +44,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+      if (action === 'clear') {
+          const success = await clearAllUsers();
+
+          if (!success) {
+              return NextResponse.json({ error: 'Failed to clear all users' }, { status: 500 });
+          }
+
+          return NextResponse.json({ success: true });
+      }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
-      console.error('Error resetting scores:', error);
-    return NextResponse.json({ error: 'Failed to reset scores' }, { status: 500 });
+      console.error('Error processing admin action:', error);
+      return NextResponse.json({ error: 'Failed to process admin action' }, { status: 500 });
   }
 }

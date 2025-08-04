@@ -62,6 +62,25 @@ function AdminDashboardContent() {
     }
   };
 
+  const clearAllUsers = async () => {
+    if (!confirm('⚠️ DANGER: This will permanently delete ALL users from the database. This action cannot be undone. Are you absolutely sure?')) {
+      return;
+    }
+
+    try {
+      await fetch('/api/players', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' }),
+      });
+      fetchPlayers(); // Refresh data
+      alert('All users have been cleared from the database.');
+    } catch (error) {
+      console.error('Failed to clear all users:', error);
+      alert('Failed to clear all users');
+    }
+  };
+
   const exportData = () => {
     const dataStr = JSON.stringify(players, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -118,6 +137,12 @@ function AdminDashboardContent() {
             className="px-6 py-3 font-medium text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700"
           >
             Reset All Scores
+          </button>
+          <button
+            onClick={clearAllUsers}
+            className="px-6 py-3 font-medium text-white bg-red-800 rounded-lg transition-colors hover:bg-red-900"
+          >
+            🗑️ Clear All Users
           </button>
           <button
             onClick={exportData}

@@ -41,17 +41,78 @@ export async function getPlayers(): Promise<Player[]> {
   return data || [];
 }
 
+export async function getPlayerById(id: string): Promise<Player | null> {
+    const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching player:', error);
+        return null;
+    }
+
+    return data;
+}
+
+export async function getPlayerByName(name: string): Promise<Player | null> {
+    const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .ilike('name', name) // Case-insensitive search
+        .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching player by name:', error);
+        return null;
+    }
+
+    return data;
+}
+
 export async function upsertPlayer(player: Player): Promise<boolean> {
-  const { error } = await supabase
-    .from('players')
-    .upsert(player, { onConflict: 'id' });
+    // Check if player already exists by ID
+    const existingPlayer = await getPlayerById(player.id);
 
-  if (error) {
-    console.error('Error upserting player:', error);
-    return false;
-  }
+    if (existingPlayer) {
+        // Update existing player's score if new score is higher
+        if (player.score > existingPlayer.score) {
+            const { error } = await supabase
+                .from('players')
+                .update({
+                    name: player.name,
+                    score: player.score,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', player.id);
 
-  return true;
+            if (error) {
+                console.error('Error updating player:', error);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Check if username already exists (case-insensitive)
+    const existingPlayerByName = await getPlayerByName(player.name);
+    if (existingPlayerByName) {
+        console.error('Username already exists:', player.name);
+        return false;
+    }
+
+    // Create new player
+    const { error } = await supabase
+        .from('players')
+        .insert(player);
+
+    if (error) {
+        console.error('Error creating player:', error);
+        return false;
+    }
+
+    return true;
 }
 
 export async function getGameSession(deviceId: string, userId: string): Promise<GameSession | null> {
@@ -109,4 +170,18 @@ export async function resetAllScores(): Promise<boolean> {
   }
 
   return true;
+}
+
+export async function clearAllUsers(): Promise<boolean> {
+    const { error } = await supabase
+        .from('players')
+        .delete()
+        .neq('id', ''); // Delete all records
+
+    if (error) {
+        console.error('Error clearing all users:', error);
+        return false;
+    }
+
+    return true;
 }

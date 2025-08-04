@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { acronyms, shuffleArray, generateUserId, generateDeviceId, canPlayAgain, getTimeUntilNextGame, markGameCompleted, resetGameSession, type Player, type Acronym } from '@/lib/gameData';
+import { acronyms, shuffleArray, generateUserId, generateDeviceId, canPlayAgain, getTimeUntilNextGame, markGameCompleted, resetGameSession, getExistingDeviceSession, checkUsernameAvailability, type Player, type Acronym } from '@/lib/gameData';
 
 const GAME_DURATION = 120000; // 2 minutes in milliseconds
 
@@ -24,6 +24,8 @@ export default function Game() {
   const [canPlay, setCanPlay] = useState(true);
   const [timeUntilNextGame, setTimeUntilNextGame] = useState('00:00:00');
   const [showCooldownMessage, setShowCooldownMessage] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
   const mainTimerInterval = useRef<NodeJS.Timeout | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
@@ -44,7 +46,16 @@ export default function Game() {
       if (!playable) {
         setShowCooldownMessage(true);
         setShowNameInput(false);
-        setMessage('You have completed today\'s game. Come back in 24 hours for another challenge!');
+        setMessage('You have completed today\'s game. Come back in 2 hours for another challenge!');
+      } else {
+        // Check if this device has a previous session with a different user
+        const existingSession = await getExistingDeviceSession(newDeviceId);
+        if (existingSession) {
+          setShowCooldownMessage(true);
+          setShowNameInput(false);
+          setMessage('This device has already been used to play. Come back in 2 hours for another challenge!');
+          setCanPlay(false);
+        }
       }
     };
 
@@ -100,29 +111,52 @@ export default function Game() {
 
   const joinGame = async () => {
     if (!playerName.trim()) {
-      alert('Please enter a name.');
+      setUsernameError('Please enter a name.');
       return;
     }
 
     if (!userId) {
-      alert('Please wait for your user ID to be generated.');
+      setUsernameError('Please wait for your user ID to be generated.');
       return;
     }
 
+    // Clear previous errors
+    setUsernameError('');
+    setIsCheckingUsername(true);
+
     try {
-      await fetch('/api/players', {
+      // Check if username is available
+      const usernameCheck = await checkUsernameAvailability(playerName.trim());
+
+      if (!usernameCheck.available) {
+        setUsernameError(usernameCheck.message);
+        setIsCheckingUsername(false);
+        return;
+      }
+
+      // Username is available, proceed with joining
+      const response = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: userId, name: playerName, score: 0 }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        setUsernameError(errorData.error || 'Failed to join game');
+        setIsCheckingUsername(false);
+        return;
+      }
+
       setShowNameInput(false);
+      setIsCheckingUsername(false);
       if (!gameActive) {
         startGame();
       }
     } catch (error) {
       console.error('Error joining game:', error);
-      setMessage('Failed to join. Please try again.');
+      setUsernameError('Failed to join. Please try again.');
+      setIsCheckingUsername(false);
     }
   };
 
@@ -170,6 +204,25 @@ export default function Game() {
     setScrambledText("Thanks for playing!");
     setIsAnswerDisabled(true);
     setTimeLeft("00:00");
+
+    // Save player data to database (prevents duplicates)
+    if (playerName && userId) {
+      try {
+        const response = await fetch('/api/players', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: userId, name: playerName, score: 0 }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to save player data');
+        } else {
+          console.log('Player data saved successfully');
+        }
+      } catch (error) {
+        console.error('Error saving player data:', error);
+      }
+    }
 
     // Mark game as completed for 24-hour cooldown
     if (deviceId && userId && playerName) {
@@ -290,21 +343,39 @@ export default function Game() {
 
       {/* Player Name Input */}
       {showNameInput && canPlay && (
-        <div className="flex gap-4 justify-center items-center mb-6">
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            placeholder="Enter your name"
-            className="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full max-w-xs p-2.5"
-            required
-          />
-          <button
-            onClick={joinGame}
-            className="text-white bg-yellow-500 hover:bg-yellow-600 focus:ring-4 focus:outline-none focus:ring-yellow-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-          >
-            Join Game
-          </button>
+        <div className="flex flex-col gap-4 justify-center items-center mb-6">
+          <div className="flex gap-4 justify-center items-center">
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => {
+                setPlayerName(e.target.value);
+                setUsernameError(''); // Clear error when user types
+              }}
+              placeholder="Enter your name"
+              className={`bg-gray-800 border text-white text-sm rounded-lg focus:ring-yellow-500 focus:border-yellow-500 block w-full max-w-xs p-2.5 ${
+                usernameError ? 'border-red-500' : 'border-gray-600'
+              }`}
+              required
+              disabled={isCheckingUsername}
+            />
+            <button
+              onClick={joinGame}
+              disabled={isCheckingUsername}
+              className={`font-medium rounded-lg text-sm px-5 py-2.5 text-center focus:ring-4 focus:outline-none focus:ring-yellow-700 ${
+                isCheckingUsername
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'text-white bg-yellow-500 hover:bg-yellow-600'
+              }`}
+            >
+              {isCheckingUsername ? 'Checking...' : 'Join Game'}
+            </button>
+          </div>
+          {usernameError && (
+            <p className="text-sm text-red-400 text-center">
+              {usernameError}
+            </p>
+          )}
         </div>
       )}
 
@@ -368,12 +439,12 @@ export default function Game() {
               >
                 Refresh
               </button>
-              <button
+              {/* <button
                 onClick={() => setShowResetModal(true)}
                 className="px-4 py-2 text-sm font-bold text-white bg-gray-600 rounded-lg hover:bg-gray-700"
               >
                 Reset Game
-              </button>
+              </button> */}
             </div>
           </div>
           <div className="bg-gray-800 p-4 rounded-lg h-[50vh] overflow-y-auto">

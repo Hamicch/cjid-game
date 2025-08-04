@@ -75,10 +75,10 @@ export async function canPlayAgain(deviceId: string, userId: string): Promise<bo
 
         const now = new Date();
         const lastPlayed = new Date(session.last_played);
-        const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
-        // Check if 24 hours have passed
-        return (now.getTime() - lastPlayed.getTime()) >= twentyFourHours;
+        // Check if 2 hours have passed
+        return (now.getTime() - lastPlayed.getTime()) >= twoHours;
     } catch (error) {
         console.error('Error checking game session:', error);
         return true; // Allow playing if there's an error
@@ -97,8 +97,8 @@ export async function getTimeUntilNextGame(deviceId: string, userId: string): Pr
 
         const now = new Date();
         const lastPlayed = new Date(session.last_played);
-        const twentyFourHours = 24 * 60 * 60 * 1000;
-        const timeRemaining = (lastPlayed.getTime() + twentyFourHours) - now.getTime();
+        const twoHours = 2 * 60 * 60 * 1000;
+        const timeRemaining = (lastPlayed.getTime() + twoHours) - now.getTime();
 
         if (timeRemaining <= 0) {
             return '00:00:00'; // Can play now
@@ -136,6 +136,39 @@ export async function markGameCompleted(deviceId: string, userId: string, player
 }
 
 // Reset game session (for testing or admin use)
+export async function checkUsernameAvailability(username: string): Promise<{ available: boolean; message: string }> {
+    try {
+        const response = await fetch(`/api/players/check-username?name=${encodeURIComponent(username)}`);
+
+        if (!response.ok) {
+            return { available: false, message: 'Error checking username availability' };
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error checking username availability:', error);
+        return { available: false, message: 'Error checking username availability' };
+    }
+}
+
+export async function getExistingDeviceSession(deviceId: string): Promise<GameSession | null> {
+    try {
+        const response = await fetch(`/api/sessions?deviceId=${deviceId}`);
+
+        if (!response.ok) {
+            console.error('Failed to fetch device session');
+            return null;
+        }
+
+        const session = await response.json();
+        return session;
+    } catch (error) {
+        console.error('Error fetching device session:', error);
+        return null;
+    }
+}
+
 export async function resetGameSession(deviceId: string, userId: string): Promise<void> {
     try {
         await fetch('/api/sessions', {

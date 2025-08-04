@@ -1,29 +1,43 @@
-# Database Setup Guide
+# Supabase Database Setup Guide
 
-This application uses Supabase (PostgreSQL) for persistent data storage. Follow these steps to set up the database:
-
-## 1. Create Supabase Project
+## Step 1: Create Supabase Project
 
 1. Go to [supabase.com](https://supabase.com)
-2. Sign up/Login and create a new project
-3. Note down your project URL and anon key
+2. Click "Start your project"
+3. Sign in with GitHub
+4. Click "New Project"
+5. Choose your organization
+6. Enter project details:
+   - **Name**: `cjid-scramble-dash` (or your preferred name)
+   - **Database Password**: Create a strong password
+   - **Region**: Choose closest to your users
+7. Click "Create new project"
+8. Wait for project to be ready (2-3 minutes)
 
-## 2. Environment Variables
+## Step 2: Get Project Credentials
 
-Create a `.env.local` file in the root directory:
+1. Go to **Settings** → **API**
+2. Copy these values:
+   - **Project URL** (starts with `https://`)
+   - **anon public** key (starts with `eyJ`)
 
-```bash
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+## Step 3: Set Environment Variables
+
+Create a `.env.local` file in your project root:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+NEXT_PUBLIC_ADMIN_PASSWORD=admin123
 ```
 
-## 3. Database Schema
+## Step 4: Create Database Tables
 
-Run these SQL commands in your Supabase SQL editor:
+Go to **SQL Editor** in your Supabase dashboard and run these commands:
 
 ### Players Table
 ```sql
+-- Create players table
 CREATE TABLE players (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -32,60 +46,57 @@ CREATE TABLE players (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable Row Level Security
+-- Add unique constraint to prevent duplicate users
+ALTER TABLE players ADD CONSTRAINT unique_player_id UNIQUE (id);
+
+-- Enable Row Level Security (RLS)
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for now (you can restrict this later)
+-- Create policy to allow all operations (for this app)
 CREATE POLICY "Allow all operations" ON players FOR ALL USING (true);
 ```
 
 ### Game Sessions Table
 ```sql
+-- Create game_sessions table
 CREATE TABLE game_sessions (
   id SERIAL PRIMARY KEY,
   device_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
   player_name TEXT NOT NULL,
   last_played TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  game_completed BOOLEAN DEFAULT FALSE,
+  game_completed BOOLEAN DEFAULT false,
   score INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(device_id, user_id)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable Row Level Security
+-- Add unique constraint for device_id and user_id combination
+ALTER TABLE game_sessions ADD CONSTRAINT unique_device_user UNIQUE (device_id, user_id);
+
+-- Enable Row Level Security (RLS)
 ALTER TABLE game_sessions ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for now (you can restrict this later)
+-- Create policy to allow all operations (for this app)
 CREATE POLICY "Allow all operations" ON game_sessions FOR ALL USING (true);
 ```
 
-## 4. Features Enabled
+## Step 5: Verify Setup
 
-With this setup, you get:
+1. Go to **Table Editor** in Supabase
+2. You should see both `players` and `game_sessions` tables
+3. The tables should have the correct columns and constraints
 
-✅ **Persistent Player Data**: Scores and names stored in database
-✅ **Cross-Device Cooldown**: 24-hour cooldown works across devices
-✅ **Real-time Updates**: Leaderboard updates in real-time
-✅ **Admin Dashboard**: Full admin interface with database
-✅ **Scalable**: Can handle multiple users simultaneously
+## Database Features
 
-## 5. Testing
+✅ **Unique User IDs**: Each user can only exist once in the database
+✅ **Score Tracking**: Player scores are stored and updated
+✅ **Cooldown System**: 24-hour game cooldown per device/user
+✅ **Admin Access**: Secure admin dashboard with authentication
+✅ **Real-time Updates**: Live leaderboard updates
 
-1. Start the development server: `npm run dev`
-2. Visit `http://localhost:3000`
-3. Test the game and cooldown system
-4. Check the admin dashboard at `http://localhost:3000/admin`
+## Troubleshooting
 
-## 6. Production Deployment
-
-For production deployment:
-
-1. Set up environment variables in your hosting platform
-2. Deploy to Vercel, Netlify, or your preferred platform
-3. The database will work seamlessly across all deployments
-
-## Alternative: Local File Storage
-
-If you prefer to keep using local file storage (current implementation), the app will work without Supabase. Just remove the database-related environment variables and the app will fall back to file storage.
+- **Duplicate Users**: The unique constraint on `id` prevents duplicate players
+- **Cooldown Issues**: Check `game_sessions` table for device/user combinations
+- **Admin Access**: Verify `NEXT_PUBLIC_ADMIN_PASSWORD` is set correctly
