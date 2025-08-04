@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Player } from '@/lib/gameData';
+import AdminAuthWrapper from '@/components/AdminAuthWrapper';
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -73,15 +74,15 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-6 text-white bg-gray-900">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-yellow-400 mb-2">Admin Dashboard</h1>
+          <h1 className="mb-2 text-4xl font-bold text-yellow-400">Admin Dashboard</h1>
           <p className="text-gray-400">
             Real-time monitoring of player scores and game activity
           </p>
-          <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
+          <div className="flex gap-4 items-center mt-4 text-sm text-gray-500">
             <span>Last updated: {isClient ? lastUpdated.toLocaleTimeString() : 'Loading...'}</span>
             <span>•</span>
             <span>{totalPlayers} active players</span>
@@ -89,21 +90,21 @@ export default function AdminDashboard() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400 text-sm font-medium">Total Players</h3>
+        <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-4">
+          <div className="p-6 bg-gray-800 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-400">Total Players</h3>
             <p className="text-3xl font-bold text-white">{totalPlayers}</p>
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400 text-sm font-medium">Total Score</h3>
+          <div className="p-6 bg-gray-800 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-400">Total Score</h3>
             <p className="text-3xl font-bold text-green-400">{totalScore}</p>
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400 text-sm font-medium">Average Score</h3>
+          <div className="p-6 bg-gray-800 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-400">Average Score</h3>
             <p className="text-3xl font-bold text-blue-400">{averageScore}</p>
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-gray-400 text-sm font-medium">Top Score</h3>
+          <div className="p-6 bg-gray-800 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-400">Top Score</h3>
             <p className="text-3xl font-bold text-yellow-400">
               {topPlayer ? topPlayer.score : '0'}
             </p>
@@ -114,33 +115,44 @@ export default function AdminDashboard() {
         <div className="flex gap-4 mb-8">
           <button
             onClick={resetScores}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+            className="px-6 py-3 font-medium text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700"
           >
             Reset All Scores
           </button>
           <button
             onClick={exportData}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            className="px-6 py-3 font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
           >
             Export Data
           </button>
           <button
             onClick={fetchPlayers}
-            className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
+            className="px-6 py-3 font-medium text-white bg-gray-600 rounded-lg transition-colors hover:bg-gray-700"
           >
             Refresh Data
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('Reset all game cooldowns? This will allow all users to play again immediately.')) {
+                // This would need to be implemented in the API
+                alert('Cooldown reset feature coming soon!');
+              }
+            }}
+            className="px-6 py-3 font-medium text-white bg-orange-600 rounded-lg transition-colors hover:bg-orange-700"
+          >
+            Reset All Cooldowns
           </button>
         </div>
 
         {/* Players Table */}
-        <div className="bg-gray-800 rounded-lg overflow-hidden">
+        <div className="overflow-hidden bg-gray-800 rounded-lg">
           <div className="px-6 py-4 border-b border-gray-700">
             <h2 className="text-xl font-semibold">Player Records</h2>
           </div>
 
           {loading ? (
             <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto"></div>
+              <div className="mx-auto w-8 h-8 rounded-full border-b-2 border-yellow-400 animate-spin"></div>
               <p className="mt-2 text-gray-400">Loading player data...</p>
             </div>
           ) : players.length === 0 ? (
@@ -152,19 +164,19 @@ export default function AdminDashboard() {
               <table className="w-full">
                 <thead className="bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-300 uppercase">
                       Rank
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-300 uppercase">
                       Player Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-300 uppercase">
                       User ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-300 uppercase">
                       Score
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-300 uppercase">
                       Status
                     </th>
                   </tr>
@@ -191,7 +203,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-400 font-mono">
+                          <div className="font-mono text-sm text-gray-400">
                             {player.id}
                           </div>
                         </td>
@@ -216,11 +228,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-gray-500 text-sm">
+        <div className="mt-8 text-sm text-center text-gray-500">
           <p>Dashboard updates automatically every 2 seconds</p>
-          <p className="mt-1">Data is stored locally in data/players.json</p>
+          <p className="mt-1">Data is stored in Supabase database</p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <AdminAuthWrapper>
+      <AdminDashboardContent />
+    </AdminAuthWrapper>
   );
 }

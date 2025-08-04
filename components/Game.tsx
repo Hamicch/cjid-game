@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { acronyms, shuffleArray, generateUserId, type Player, type Acronym } from '@/lib/gameData';
+import { acronyms, shuffleArray, generateUserId, generateDeviceId, canPlayAgain, getTimeUntilNextGame, markGameCompleted, resetGameSession, type Player, type Acronym } from '@/lib/gameData';
 
 const GAME_DURATION = 120000; // 2 minutes in milliseconds
 
 export default function Game() {
   const [userId, setUserId] = useState<string>('');
+  const [deviceId, setDeviceId] = useState<string>('');
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(true);
   const [gameActive, setGameActive] = useState(false);
@@ -20,14 +21,34 @@ export default function Game() {
   const [answerInput, setAnswerInput] = useState('');
   const [isAnswerDisabled, setIsAnswerDisabled] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [canPlay, setCanPlay] = useState(true);
+  const [timeUntilNextGame, setTimeUntilNextGame] = useState('00:00:00');
+  const [showCooldownMessage, setShowCooldownMessage] = useState(false);
 
   const mainTimerInterval = useRef<NodeJS.Timeout | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Generate user ID only on client side
+    // Generate user ID and check cooldown only on client side
   useEffect(() => {
     setIsClient(true);
-    setUserId(generateUserId());
+    const newUserId = generateUserId();
+    const newDeviceId = generateDeviceId();
+    setUserId(newUserId);
+    setDeviceId(newDeviceId);
+
+    // Check if user can play
+    const checkPlayability = async () => {
+      const playable = await canPlayAgain(newDeviceId, newUserId);
+      setCanPlay(playable);
+
+      if (!playable) {
+        setShowCooldownMessage(true);
+        setShowNameInput(false);
+        setMessage('You have completed today\'s game. Come back in 24 hours for another challenge!');
+      }
+    };
+
+    checkPlayability();
   }, []);
 
   // Polling for leaderboard updates
@@ -53,6 +74,29 @@ export default function Game() {
       clearInterval(interval);
     };
   }, []);
+
+    // Cooldown timer
+  useEffect(() => {
+    if (!canPlay && showCooldownMessage && deviceId && userId) {
+      const updateCooldown = async () => {
+        const timeRemaining = await getTimeUntilNextGame(deviceId, userId);
+        setTimeUntilNextGame(timeRemaining);
+
+        // Check if cooldown is over
+        if (timeRemaining === '00:00:00') {
+          setCanPlay(true);
+          setShowCooldownMessage(false);
+          setShowNameInput(true);
+          setMessage('Welcome! You can play again.');
+        }
+      };
+
+      updateCooldown();
+      const interval = setInterval(updateCooldown, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [canPlay, showCooldownMessage, deviceId, userId]);
 
   const joinGame = async () => {
     if (!playerName.trim()) {
@@ -117,7 +161,7 @@ export default function Game() {
     }, 1000);
   };
 
-  const endGame = (endMessage: string) => {
+    const endGame = async (endMessage: string) => {
     setGameActive(false);
     if (mainTimerInterval.current) {
       clearInterval(mainTimerInterval.current);
@@ -126,6 +170,11 @@ export default function Game() {
     setScrambledText("Thanks for playing!");
     setIsAnswerDisabled(true);
     setTimeLeft("00:00");
+
+    // Mark game as completed for 24-hour cooldown
+    if (deviceId && userId && playerName) {
+      await markGameCompleted(deviceId, userId, playerName, 0);
+    }
   };
 
   const showNextQuestion = (isFirstQuestion = false, questionsOverride?: Acronym[]) => {
@@ -218,12 +267,6 @@ export default function Game() {
     <div className="p-4 mx-auto w-full max-w-6xl md:p-6">
               <div className="mb-6 text-center">
           <div className="flex justify-between items-center mb-4">
-            <a
-              href="/admin"
-              className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
-            >
-              Admin Dashboard →
-            </a>
             <div className="flex-1"></div>
           </div>
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 md:text-5xl">
@@ -235,10 +278,18 @@ export default function Game() {
               {isClient ? (userId || 'Generating...') : 'Loading...'}
             </span>
           </p>
+          {showCooldownMessage && (
+            <div className="p-4 mt-4 rounded-lg border bg-red-900/30 border-red-500/30">
+              <p className="font-medium text-red-400">⏰ Game Cooldown Active</p>
+              <p className="mt-1 text-sm text-gray-400">
+                Time until next game: <span className="font-mono text-yellow-400">{timeUntilNextGame}</span>
+              </p>
+            </div>
+          )}
         </div>
 
       {/* Player Name Input */}
-      {showNameInput && (
+      {showNameInput && canPlay && (
         <div className="flex gap-4 justify-center items-center mb-6">
           <input
             type="text"
