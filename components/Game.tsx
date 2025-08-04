@@ -36,7 +36,6 @@ export default function Game() {
       try {
         const response = await fetch('/api/players');
         const data = await response.json();
-        console.log('Fetched players:', data); // Debug log
         setPlayers(data);
       } catch (error) {
         console.error('Failed to fetch players:', error);
@@ -47,12 +46,11 @@ export default function Game() {
     pollLeaderboard();
 
     // Set up polling
-    pollingInterval.current = setInterval(pollLeaderboard, 1000);
+    const interval = setInterval(pollLeaderboard, 1000);
+    pollingInterval.current = interval;
 
     return () => {
-      if (pollingInterval.current) {
-        clearInterval(pollingInterval.current);
-      }
+      clearInterval(interval);
     };
   }, []);
 
@@ -68,7 +66,6 @@ export default function Game() {
     }
 
     try {
-      console.log('Joining game with:', { id: userId, name: playerName, score: 0 }); // Debug log
       await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,12 +299,31 @@ export default function Game() {
         <div>
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-2xl font-semibold">Leaderboard</h2>
-            <button
-              onClick={() => setShowResetModal(true)}
-              className="px-4 py-2 text-sm font-bold text-white bg-gray-600 rounded-lg hover:bg-gray-700"
-            >
-              Reset Game
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const pollLeaderboard = async () => {
+                    try {
+                      const response = await fetch('/api/players');
+                      const data = await response.json();
+                      setPlayers(data);
+                    } catch (error) {
+                      console.error('Failed to fetch players:', error);
+                    }
+                  };
+                  pollLeaderboard();
+                }}
+                className="px-3 py-1 text-xs font-bold text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="px-4 py-2 text-sm font-bold text-white bg-gray-600 rounded-lg hover:bg-gray-700"
+              >
+                Reset Game
+              </button>
+            </div>
           </div>
           <div className="bg-gray-800 p-4 rounded-lg h-[50vh] overflow-y-auto">
             {players.length === 0 ? (

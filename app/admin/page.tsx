@@ -7,6 +7,12 @@ export default function AdminDashboard() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client flag on mount
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Fetch players data
   const fetchPlayers = async () => {
@@ -76,7 +82,7 @@ export default function AdminDashboard() {
             Real-time monitoring of player scores and game activity
           </p>
           <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
-            <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+            <span>Last updated: {isClient ? lastUpdated.toLocaleTimeString() : 'Loading...'}</span>
             <span>•</span>
             <span>{totalPlayers} active players</span>
           </div>
