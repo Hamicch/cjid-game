@@ -60,9 +60,9 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col h-screen bg-gray-900">
       {/* Admin Header */}
-      <div className="p-4 bg-gray-800 border-b border-gray-700">
+      <div className="flex-shrink-0 p-4 bg-gray-800 border-b border-gray-700">
         <div className="flex justify-between items-center mx-auto max-w-7xl">
           <h1 className="text-xl font-bold text-yellow-400">Admin Dashboard</h1>
           <div className="flex gap-4 items-center">
@@ -78,7 +78,9 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
       </div>
 
       {/* Admin Content */}
-      {children}
+      <div className="overflow-y-auto flex-1">
+        {children}
+      </div>
     </div>
   );
 }
